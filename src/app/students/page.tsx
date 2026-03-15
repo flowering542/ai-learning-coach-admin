@@ -120,7 +120,11 @@ export default function StudentsPage() {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {students.map((student) => (
-                  <tr key={student.userId} className="hover:bg-gray-50">
+                  <tr 
+                    key={student.userId} 
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => router.push(`/students/${student.userId}`)}
+                  >
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {student.userId}
                     </td>
