@@ -20,54 +20,48 @@ export async function GET(
     
     const student = JSON.parse(fs.readFileSync(studentPath, 'utf8'))
     
-    // 读取题库，用于解析错题
-    const questionsPath = path.join(DATA_DIR, 'questions-v2-final.json')
-    let questions: any[] = []
-    if (fs.existsSync(questionsPath)) {
-      questions = JSON.parse(fs.readFileSync(questionsPath, 'utf8'))
-    }
-    
-    // 解析错题详情
-    const wrongQuestionsDetails = (student.wrongQuestions || []).map((wq: any) => {
-      const question = questions.find((q: any) => q.id === wq.id)
-      return {
-        ...wq,
-        question: question?.question || '题目已删除',
-        dimension: question?.dimension || '未知',
-        correctCount: wq.correctCount || 0,
-        lastWrongAt: wq.lastWrongAt
+    // 标准化数据结构
+    const normalizedStudent = {
+      userId: student.userId || student.id || userId,
+      level: student.level,
+      version: student.version || 'free',
+      activated: student.activated || !!student.activationCode,
+      activationCode: student.activationCode,
+      stats: {
+        total: student.stats?.total || student.totalQuestions || 0,
+        correct: student.stats?.correct || student.correctAnswers || 0,
+        wrong: student.stats?.wrong || (student.wrongAnswers?.length || 0)
+      },
+      streakDays: student.streakDays || 0,
+      achievements: student.achievements || [],
+      lastActive: student.lastActive || student.lastActiveAt,
+      assessment: student.assessment,
+      // 错题详情
+      wrongQuestionsDetails: (student.wrongAnswers || []).map((wq: any) => ({
+        id: wq.questionId,
+        question: wq.question,
+        dimension: '未知',
+        correctCount: 0,
+        lastWrongAt: wq.timestamp,
+        yourAnswer: wq.yourAnswer,
+        correctAnswer: wq.correctAnswer,
+        reason: wq.reason
+      })),
+      // 维度统计
+      dimensionStats: {
+        '基础知识': { total: 0, correct: 0 },
+        '相关专业知识': { total: 0, correct: 0 },
+        '专业知识': { total: 0, correct: 0 },
+        '专业实践能力': { total: 0, correct: 0 }
       }
-    })
-    
-    // 统计各维度答题情况
-    const dimensionStats = {
-      '基础知识': { total: 0, correct: 0 },
-      '相关专业知识': { total: 0, correct: 0 },
-      '专业知识': { total: 0, correct: 0 },
-      '专业实践能力': { total: 0, correct: 0 }
     }
     
-    // 从答题记录统计（如果有）
-    if (student.answerHistory) {
-      student.answerHistory.forEach((record: any) => {
-        const q = questions.find((q: any) => q.id === record.questionId)
-        if (q && dimensionStats[q.dimension as keyof typeof dimensionStats]) {
-          dimensionStats[q.dimension as keyof typeof dimensionStats].total++
-          if (record.correct) {
-            dimensionStats[q.dimension as keyof typeof dimensionStats].correct++
-          }
-        }
-      })
-    }
+    // 计算正确率
+    normalizedStudent.accuracy = normalizedStudent.stats.total > 0 
+      ? Math.round((normalizedStudent.stats.correct / normalizedStudent.stats.total) * 100) 
+      : 0
     
-    return NextResponse.json({
-      ...student,
-      wrongQuestionsDetails,
-      dimensionStats,
-      accuracy: student.stats?.total > 0 
-        ? Math.round((student.stats.correct / student.stats.total) * 100) 
-        : 0
-    })
+    return NextResponse.json(normalizedStudent)
   } catch (error) {
     console.error('Student detail error:', error)
     return NextResponse.json({ error: '获取学员详情失败' }, { status: 500 })
