@@ -67,6 +67,7 @@ export default function DashboardPage() {
             </div>
             <div className="flex items-center space-x-4">
               <a href="/students" className="text-gray-600 hover:text-gray-900">学员管理</a>
+              <a href="/codes" className="text-gray-600 hover:text-gray-900">激活码</a>
               <button
                 onClick={handleLogout}
                 className="text-red-600 hover:text-red-800"
